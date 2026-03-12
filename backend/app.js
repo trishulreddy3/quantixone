@@ -13,13 +13,22 @@ const app = express();
 app.use(helmet());
 
 // --- 2. CORS (Cross-Origin Resource Sharing) ---
+const allowedOrigins = [
+  'https://quantixone.vercel.app',
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:4173', // vite preview
+].filter(Boolean); // remove any undefined
+
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow all localhost origins during development, or the exact env URL
-    if (!origin || origin.startsWith('http://localhost') || origin === process.env.FRONTEND_URL) {
+    // Allow requests with no origin (e.g. mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error(`CORS: Origin '${origin}' not allowed`));
     }
   },
   credentials: true
