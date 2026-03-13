@@ -16,6 +16,7 @@ router.get('/', async (req, res, next) => {
         if (status && status !== 'All') query.status = status;
 
         const payouts = await Payout.find(query)
+            .populate('partner_id', 'kyc.company_name kyc.email')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);

@@ -4,6 +4,7 @@ const Partner = require('../models/Partner');
 const Contract = require('../models/Contract');
 const Commission = require('../models/Commission');
 const Payout = require('../models/Payout');
+const ReferralCode = require('../models/ReferralCode');
 const bcrypt = require('bcryptjs');
 
 // POST /partners - Onboard new partner (Admin)
@@ -42,7 +43,13 @@ router.get('/', async (req, res, next) => {
 
         let query = {};
         if (status && status !== 'All') query.status = status;
-        if (search) query.$text = { $search: search };
+        if (search) {
+            // Use regex search as fallback (text index may not be set up)
+            query.$or = [
+                { "kyc.company_name": { $regex: search, $options: 'i' } },
+                { "kyc.email": { $regex: search, $options: 'i' } }
+            ];
+        }
 
         const partners = await Partner.find(query)
             .sort({ createdAt: -1 })
@@ -91,7 +98,7 @@ router.put('/:id', async (req, res, next) => {
         if (!partner) return res.status(404).json({ error: "Partner not found" });
 
         if (bank) partner.bank = bank;
-        if (notes) partner.notes = notes;
+        if (notes !== undefined) partner.notes = notes;
 
         await partner.save();
         res.json(partner);
@@ -116,6 +123,47 @@ router.patch('/:id/password', async (req, res, next) => {
     }
 });
 
+// PATCH /partners/:id/stats - Recalculate and update partner tier/stats (called after new commission or org referral)
+router.patch('/:id/stats', async (req, res, next) => {
+    try {
+        const partner = await Partner.findById(req.params.id);
+        if (!partner) return res.status(404).json({ error: "Partner not found" });
+
+        // Count distinct referred orgs from referral codes
+        const codes = await ReferralCode.find({ partner_id: req.params.id });
+        const totalOrgsReferred = codes.reduce((sum, c) => sum + (c.total_uses || 0), 0);
+
+        // Compute total commissions earned
+        const commissionAgg = await Commission.aggregate([
+            { $match: { partner_id: partner._id } },
+            { $group: { _id: null, total: { $sum: '$net_commission' } } }
+        ]);
+        const totalEarned = commissionAgg[0]?.total || 0;
+
+        // Determine tier from slab config
+        const SlabConfig = require('../models/SlabConfig');
+        const slabConfig = await SlabConfig.findOne().sort({ createdAt: -1 });
+        let newTier = 1;
+        if (slabConfig && slabConfig.tiers) {
+            for (const tier of slabConfig.tiers) {
+                if (totalOrgsReferred >= tier.min_orgs && (tier.max_orgs === null || totalOrgsReferred <= tier.max_orgs)) {
+                    newTier = tier.tier;
+                    break;
+                }
+            }
+        }
+
+        partner.total_orgs_referred = totalOrgsReferred;
+        partner.total_commissions_earned = totalEarned;
+        partner.current_tier = newTier;
+        await partner.save();
+
+        res.json(partner);
+    } catch (error) {
+        next(error);
+    }
+});
+
 // DELETE /partners/:id - Delete partner and all associated data (Admin)
 router.delete('/:id', async (req, res, next) => {
     try {
@@ -130,7 +178,8 @@ router.delete('/:id', async (req, res, next) => {
         await Promise.all([
             Contract.deleteMany({ partner_id: partnerId }),
             Commission.deleteMany({ partner_id: partnerId }),
-            Payout.deleteMany({ partner_id: partnerId })
+            Payout.deleteMany({ partner_id: partnerId }),
+            ReferralCode.deleteMany({ partner_id: partnerId })
         ]);
 
         await Partner.findByIdAndDelete(partnerId);

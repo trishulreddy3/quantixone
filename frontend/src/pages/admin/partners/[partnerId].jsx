@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, User, Briefcase, FileText, CheckCircle, XCircle, AlertTriangle, Lock, Trash2 } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, FileText, AlertTriangle, Lock, Trash2, RefreshCcw } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useAdminStore } from '../../../store/adminStore';
 import TierProgressIndicator from '../../../components/TierProgressIndicator';
 import PageErrorCard from '../../../components/PageErrorCard';
+import api from '../../../api';
 
 const PartnerDetail = () => {
     const { partnerId } = useParams();
@@ -29,8 +30,11 @@ const PartnerDetail = () => {
 
     const handleCreateContract = async () => {
         setIsProcessing(true);
-        await createContract(partnerId);
+        const success = await createContract(partnerId);
         setIsProcessing(false);
+        if (!success) {
+            alert('Failed to create contract. Please check the partner status and try again.');
+        }
     };
 
     const handleChangePassword = async () => {
@@ -47,6 +51,19 @@ const PartnerDetail = () => {
             setNewPassword('');
         } else {
             alert("Failed to change password. Please try again.");
+        }
+    };
+
+    const handleSyncStats = async () => {
+        setIsProcessing(true);
+        try {
+            await api.patch(`/partners/${partnerId}/stats`);
+            await fetchPartnerDetail(partnerId);
+            alert('Partner stats synced! Tier and org count updated from referral code usage.');
+        } catch (err) {
+            alert('Failed to sync stats.');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -76,7 +93,6 @@ const PartnerDetail = () => {
 
     const { kyc, bank, current_tier, total_orgs_referred, total_commissions_earned, total_commissions_paid, status, notes } = activePartner;
 
-    // Determine badge color
     let badgeType = 'gray';
     if (status === 'active') badgeType = 'green';
     else if (status === 'pending_review') badgeType = 'yellow';
@@ -93,7 +109,7 @@ const PartnerDetail = () => {
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <h1 className="page-title" style={{ margin: 0 }}>{kyc.company_name}</h1>
-                            <span className={`status-badge badge-${badgeType}`}>{status.replace('_', ' ')}</span>
+                            <span className={`status-badge badge-${badgeType}`}>{status.replace(/_/g, ' ')}</span>
                             <div style={{ background: '#f3e8ff', color: '#6b21a8', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.8rem', fontWeight: 600 }}>
                                 Tier {current_tier || 1}
                             </div>
@@ -101,10 +117,17 @@ const PartnerDetail = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                        className="premium-btn premium-btn-secondary"
+                        style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-color)', fontSize: '0.85rem', padding: '8px 14px' }}
+                        onClick={handleSyncStats} disabled={isProcessing}
+                        title="Recalculate tier and org count from referral code usage"
+                    >
+                        <RefreshCcw size={14} style={{ marginRight: '6px' }} /> Sync Stats
+                    </button>
                     <button className="premium-btn premium-btn-secondary" style={{ color: 'var(--primary)', borderColor: 'var(--primary)' }} onClick={() => setShowPasswordModal(true)} disabled={isProcessing}>
-                        <Lock size={16} style={{ marginRight: '6px' }} />
-                        Reset Password
+                        <Lock size={16} style={{ marginRight: '6px' }} /> Reset Password
                     </button>
                     {status === 'pending_review' && (
                         <>
@@ -117,6 +140,11 @@ const PartnerDetail = () => {
                             <button className="premium-btn" onClick={handleCreateContract} disabled={isProcessing}>Send Contract</button>
                             <button className="premium-btn premium-btn-danger" onClick={() => setShowTerminateModal(true)} disabled={isProcessing}>Terminate</button>
                         </>
+                    )}
+                    {status === 'pending_review' && (
+                        <button className="premium-btn premium-btn-secondary" onClick={handleCreateContract} disabled={isProcessing} style={{ fontSize: '0.82rem' }}>
+                            Create Contract Early
+                        </button>
                     )}
                     {status === 'contract_sent' && (
                         <>
@@ -139,8 +167,7 @@ const PartnerDetail = () => {
                         </>
                     )}
                     <button className="premium-btn premium-btn-danger" style={{ background: 'transparent', color: '#ef4444', border: '1px solid #ef4444' }} onClick={() => setShowDeleteModal(true)} disabled={isProcessing}>
-                        <Trash2 size={16} style={{ marginRight: '6px' }} />
-                        Delete Partner
+                        <Trash2 size={16} style={{ marginRight: '6px' }} /> Delete Partner
                     </button>
                 </div>
             </div>
@@ -151,25 +178,22 @@ const PartnerDetail = () => {
                     <div className="stat-value">{total_orgs_referred || 0}</div>
                 </div>
                 <div className="card stat-card">
-                    <div className="stat-label">Active Orgs</div>
-                    <div className="stat-value" style={{ color: 'var(--accent-blue)' }}>{total_orgs_referred || 0}</div>
+                    <div className="stat-label">Current Tier</div>
+                    <div className="stat-value" style={{ color: 'var(--accent-blue)' }}>Tier {current_tier || 1}</div>
                 </div>
                 <div className="card stat-card">
                     <div className="stat-label">Total Earned</div>
                     <div className="stat-value" style={{ color: 'var(--accent-green)' }}>₹{(total_commissions_earned || 0).toLocaleString('en-IN')}</div>
                 </div>
                 <div className="card stat-card">
-                    <div className="stat-label">Total Paid</div>
+                    <div className="stat-label">Total Paid Out</div>
                     <div className="stat-value">₹{(total_commissions_paid || 0).toLocaleString('en-IN')}</div>
                 </div>
             </div>
 
             <div className="card" style={{ padding: '32px', marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '24px' }}>Tier Progress & Config</h3>
-                <TierProgressIndicator
-                    currentTier={current_tier || 1}
-                    totalOrgs={total_orgs_referred || 0}
-                />
+                <TierProgressIndicator currentTier={current_tier || 1} totalOrgs={total_orgs_referred || 0} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '24px', marginBottom: '24px' }}>
@@ -180,7 +204,6 @@ const PartnerDetail = () => {
                         <User size={20} />
                         <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>KYC Profiles</h3>
                     </div>
-
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                         <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Company</span><div style={{ fontWeight: 500 }}>{kyc.company_name}</div></div>
                         <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Contact Person</span><div style={{ fontWeight: 500 }}>{kyc.contact_person_name}</div></div>
@@ -191,7 +214,6 @@ const PartnerDetail = () => {
                         <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>GST Number</span><div style={{ fontWeight: 500, textTransform: 'uppercase' }}>{kyc.gst_number || 'N/A'}</div></div>
                         <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>DPIIT Number</span><div style={{ fontWeight: 500, textTransform: 'uppercase' }}>{kyc.dpiit_number || 'N/A'}</div></div>
                     </div>
-
                     <div style={{ padding: '12px', background: 'var(--bg-surface-hover)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', gap: '8px' }}>
                         <AlertTriangle size={16} /> KYC fields cannot be edited after onboarding.
                     </div>
@@ -207,7 +229,6 @@ const PartnerDetail = () => {
                             </div>
                             <Link to={`/admin/partners/${partnerId}/edit`} style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 500 }}>Edit Details</Link>
                         </div>
-
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                             <div style={{ gridColumn: 'span 2' }}><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Beneficiary</span><div style={{ fontWeight: 500 }}>{bank.beneficiary_name}</div></div>
                             <div><span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Account Number</span><div style={{ fontWeight: 500 }}>XXXX XXXX {bank.account_number?.slice(-4) || 'N/A'}</div></div>
@@ -230,8 +251,16 @@ const PartnerDetail = () => {
                 </div>
             </div>
 
+            {/* Contracts Section */}
             <div className="card" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '20px' }}>Contracts</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0 }}>Contracts</h3>
+                    {['pending_review', 'approved'].includes(status) && (
+                        <button className="premium-btn" style={{ fontSize: '0.85rem', padding: '8px 16px' }} onClick={handleCreateContract} disabled={isProcessing}>
+                            + Create Contract
+                        </button>
+                    )}
+                </div>
 
                 <div className="table-container">
                     <table className="premium-table">
@@ -256,10 +285,10 @@ const PartnerDetail = () => {
                                 partnerContracts.map(c => (
                                     <tr key={c._id}>
                                         <td style={{ fontFamily: 'monospace' }}>{(c._id || '').toString().slice(-8)}</td>
-                                        <td><span className={`status-badge badge-${c.status.includes('signed') ? 'blue' : (c.status === 'active' ? 'green' : 'gray')}`}>{c.status.replace('_', ' ')}</span></td>
+                                        <td><span className={`status-badge badge-${c.status === 'active' ? 'green' : c.status === 'terminated' ? 'red' : c.status?.includes('signed') ? 'blue' : 'gray'}`}>{(c.status || '').replace(/_/g, ' ')}</span></td>
                                         <td>{c.partner_signed_at ? new Date(c.partner_signed_at).toLocaleDateString() : '—'}</td>
                                         <td>{c.admin_signed_at ? new Date(c.admin_signed_at).toLocaleDateString() : '—'}</td>
-                                        <td>{new Date(c.createdAt).toLocaleDateString()}</td>
+                                        <td>{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
                                         <td>
                                             <Link to={`/admin/contracts/${c._id}`} className="premium-btn premium-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', textDecoration: 'none' }}>
                                                 View
@@ -273,6 +302,7 @@ const PartnerDetail = () => {
                 </div>
             </div>
 
+            {/* Modals */}
             {showTerminateModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
                     <div className="card animate-fade-in" style={{ padding: '32px', maxWidth: '400px', width: '100%' }}>
@@ -305,7 +335,7 @@ const PartnerDetail = () => {
                                 className="premium-input"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Enter strong password"
+                                placeholder="Enter strong password (min 6 chars)"
                                 disabled={isProcessing}
                             />
                         </div>

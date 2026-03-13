@@ -103,8 +103,21 @@ router.post('/', async (req, res, next) => {
         });
         await commission.save();
 
-        // Update partner earnings
+        // Update partner earnings and orgs referred count
         partner.total_commissions_earned = (partner.total_commissions_earned || 0) + 15000;
+        partner.total_orgs_referred = (partner.total_orgs_referred || 0) + 1;
+
+        // Recalculate tier from slab config
+        const SlabConfig = require('../models/SlabConfig');
+        const slabConfig = await SlabConfig.findOne().sort({ createdAt: -1 });
+        if (slabConfig && slabConfig.tiers && slabConfig.tiers.length > 0) {
+            const sortedTiers = [...slabConfig.tiers].sort((a, b) => a.min_orgs - b.min_orgs);
+            let newTier = 1;
+            for (const tier of sortedTiers) {
+                if (partner.total_orgs_referred >= tier.min_orgs) newTier = tier.tier;
+            }
+            partner.current_tier = newTier;
+        }
         await partner.save();
 
         // Create a payout statement containing the commission

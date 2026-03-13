@@ -18,7 +18,7 @@ router.post('/login', async (req, res, next) => {
                 const token = jwt.sign(
                     { id: 'admin_id_001', role: 'admin' },
                     process.env.JWT_SECRET || 'fallback_secret_key',
-                    { expiresIn: '1d' }
+                    { expiresIn: '7d' }
                 );
                 return res.json({ token, role: 'admin', user: { email: 'admin@gmail.com', name: 'Super Admin' } });
             } else {

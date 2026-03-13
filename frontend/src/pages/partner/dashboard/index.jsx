@@ -17,8 +17,8 @@ const PartnerDashboard = () => {
     }
 
     const { payableCommissions, selfPartner, recentCommissions } = dashboardData;
-    const currentTier = selfPartner.tier || 1;
-    const totalOrgs = selfPartner.stats?.total_orgs_referred || 0;
+    const currentTier = selfPartner.current_tier || 1;
+    const totalOrgs = selfPartner.total_orgs_referred || 0;
 
     return (
         <div className="animate-fade-in relative">
@@ -37,7 +37,7 @@ const PartnerDashboard = () => {
                 <div className="card stat-card">
                     <div className="stat-card-title">Total Earned (Paid)</div>
                     <div className="stat-card-value" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        ₹{(selfPartner.stats?.total_commissions_paid || 0).toLocaleString('en-IN')}
+                        ₹{(selfPartner.total_commissions_paid || 0).toLocaleString('en-IN')}
                         <Wallet size={24} style={{ color: 'var(--accent-green)' }} />
                     </div>
                 </div>
@@ -86,10 +86,10 @@ const PartnerDashboard = () => {
                                 </tr>
                             ) : (
                                 recentCommissions.map(c => (
-                                    <tr key={c.commission_id}>
-                                        <td>{c.referred_org_id.substring(0, 8)}...</td>
-                                        <td>{c.event_type.replace('_', ' ')}</td>
-                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{c.net_commission.toLocaleString('en-IN')}</td>
+                                    <tr key={c._id}>
+                                        <td>{(c.referred_org_id || '—').toString().substring(0, 12)}</td>
+                                        <td>{(c.event_type || '').replace(/_/g, ' ')}</td>
+                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{(c.net_commission || 0).toLocaleString('en-IN')}</td>
                                         <td>
                                             {(() => {
                                                 let badgeType = 'gray';
@@ -97,10 +97,10 @@ const PartnerDashboard = () => {
                                                 else if (c.status === 'paid') badgeType = 'green';
                                                 else if (c.status === 'pending') badgeType = 'yellow';
                                                 else if (c.status === 'clawed_back') badgeType = 'red';
-                                                return <span className={`status-badge badge-${badgeType}`}>{c.status.replace('_', ' ')}</span>;
+                                                return <span className={`status-badge badge-${badgeType}`}>{(c.status || '').replace(/_/g, ' ')}</span>;
                                             })()}
                                         </td>
-                                        <td>{new Date(c.hold_until).toLocaleDateString()}</td>
+                                        <td>{c.hold_until ? new Date(c.hold_until).toLocaleDateString() : '—'}</td>
                                     </tr>
                                 ))
                             )}

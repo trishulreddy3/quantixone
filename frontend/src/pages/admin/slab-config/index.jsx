@@ -4,7 +4,7 @@ import { Plus, Trash2, Info, AlertCircle } from 'lucide-react';
 import PageErrorCard from '../../../components/PageErrorCard';
 
 const SlabConfig = () => {
-    const { slabConfig, slabLoading, slabError, slabSaving, fetchSlabConfig, updateSlabConfig } = useAdminStore();
+    const { slabConfig, slabLoading, slabError, slabSaving, fetchSlabConfig, updateSlabConfig, resetSlabConfig } = useAdminStore();
 
     const [localTiers, setLocalTiers] = useState([]);
     const [toast, setToast] = useState(null);
@@ -93,9 +93,14 @@ const SlabConfig = () => {
         }
     };
 
-    const handleReset = () => {
+    const handleReset = async () => {
         setError(null);
-        fetchSlabConfig();
+        const success = await resetSlabConfig();
+        if (success) {
+            showToast('Slab configuration reset to system defaults!');
+        } else {
+            setError('Failed to reset configuration.');
+        }
     };
 
     if (slabError && localTiers.length === 0) {

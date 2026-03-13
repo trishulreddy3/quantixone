@@ -14,7 +14,11 @@ const authMiddleware = (req, res, next) => {
         req.user = decoded; // { id, role }
         next();
     } catch (ex) {
-        res.status(400).json({ error: 'Invalid token.' });
+        // Return 401 so the frontend interceptor properly handles session expiry
+        if (ex.name === 'TokenExpiredError') {
+            return res.status(401).json({ error: 'Session expired. Please log in again.' });
+        }
+        return res.status(401).json({ error: 'Invalid token. Please log in again.' });
     }
 };
 

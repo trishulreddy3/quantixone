@@ -77,21 +77,36 @@ export const useAdminStore = create((set, get) => ({
         set({ slabLoading: true, slabError: null });
         try {
             const res = await api.get('/slab-config');
-            set({ slabConfig: res.data.config || res.data, slabLoading: false });
+            // Backend returns { config } wrapper
+            const data = res.data.config || res.data;
+            set({ slabConfig: data, slabLoading: false });
         } catch (err) {
-            set({ slabError: err.message, slabLoading: false });
+            set({ slabError: err.response?.data?.error || err.message, slabLoading: false });
         }
     },
 
     updateSlabConfig: async (tiersData) => {
         set({ slabSaving: true });
         try {
-            await api.put('/slab-config', { tiers: tiersData, updated_by: 'admin123' });
+            await api.put('/slab-config', { tiers: tiersData, updated_by: 'admin' });
             await get().fetchSlabConfig();
             set({ slabSaving: false });
             return true;
         } catch (err) {
-            set({ slabSaving: false, slabError: err.message });
+            set({ slabSaving: false, slabError: err.response?.data?.error || err.message });
+            return false;
+        }
+    },
+
+    resetSlabConfig: async () => {
+        set({ slabSaving: true });
+        try {
+            const res = await api.post('/slab-config/reset');
+            const data = res.data.config || res.data;
+            set({ slabConfig: data, slabSaving: false });
+            return true;
+        } catch (err) {
+            set({ slabSaving: false, slabError: err.response?.data?.error || err.message });
             return false;
         }
     },
@@ -370,36 +385,33 @@ export const useAdminStore = create((set, get) => ({
     },
 
     finalizePayout: async (statementId) => {
-        // Optimistic Update
         const previousPayout = get().activePayout;
-        if (previousPayout && previousPayout.statement_id === statementId) {
+        if (previousPayout) {
             set({ activePayout: { ...previousPayout, status: 'finalized' } });
         }
 
         try {
-            await api.post(`/payouts/${statementId}/finalize`);
+            const payoutId = previousPayout?._id || statementId;
+            await api.post(`/payouts/${payoutId}/finalize`);
             await get().fetchPayoutDetail(statementId);
-            // Cache Invalidation
             get().fetchPayouts({ skip: 0, limit: 20 });
             return true;
         } catch (err) {
-            // Revert Optimistic Update
-            if (previousPayout && previousPayout.statement_id === statementId) {
-                set({ activePayout: previousPayout });
-            }
+            if (previousPayout) set({ activePayout: previousPayout });
             return false;
         }
     },
 
     disbursePayout: async (statementId, disburseData) => {
         try {
-            await api.post(`/payouts/${statementId}/disburse`, disburseData);
-            await get().fetchPayoutDetail(statementId);
-            // Cache Invalidation
-            get().fetchPayouts({ skip: 0, limit: 20 });
             const activePayout = get().activePayout;
+            const payoutId = activePayout?._id || statementId;
+            await api.post(`/payouts/${payoutId}/disburse`, disburseData);
+            await get().fetchPayoutDetail(statementId);
+            get().fetchPayouts({ skip: 0, limit: 20 });
             if (activePayout) {
-                get().fetchPartnerDetail(activePayout.partner_id);
+                const partnerId = typeof activePayout.partner_id === 'object' ? activePayout.partner_id._id : activePayout.partner_id;
+                if (partnerId) get().fetchPartnerDetail(partnerId);
             }
             return true;
         } catch (err) {

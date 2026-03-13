@@ -37,13 +37,20 @@ api.interceptors.response.use(
         const errMsg = typeof errData === 'string' ? errData : (errData.error || errData.message || JSON.stringify(errData));
 
         if (status === 401) {
-            // Unauthenticated - remove token and redirect or just show toast
+            // Unauthenticated — only redirect once, not for every concurrent failing request
             if (!window.location.pathname.includes('/login')) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('role');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-                addToast("Session expired or invalid. Please log in again.", 'error');
+                // Debounce: only clear + redirect if not already redirecting
+                if (!window._authLogoutInProgress) {
+                    window._authLogoutInProgress = true;
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('role');
+                    localStorage.removeItem('user');
+                    addToast("Session expired. Please log in again.", 'error');
+                    setTimeout(() => {
+                        window._authLogoutInProgress = false;
+                        window.location.href = '/login';
+                    }, 1500);
+                }
             }
         } else if (status === 400) {
             if (errMsg.includes('party must be')) {

@@ -37,8 +37,8 @@ const GeneratePayout = () => {
             if (searchQuery.trim().length >= 2) {
                 setIsSearching(true);
                 try {
-                    const res = await api.get(`/partners?search=${encodeURIComponent(searchQuery)}&limit=10`);
-                    setSearchResults(res.data.data || []);
+                    const res = await api.get(`/partners?search=${encodeURIComponent(searchQuery)}&limit=10&status=active`);
+                    setSearchResults(res.data.partners || []);
                     setShowDropdown(true);
                 } catch (err) {
                     console.error("Partner search failed", err);
@@ -55,8 +55,8 @@ const GeneratePayout = () => {
     }, [searchQuery]);
 
     const handleSelectPartner = (partner) => {
-        setFormData(prev => ({ ...prev, partner_id: partner.partner_id }));
-        setSearchQuery(partner.kyc?.company_name || partner.partner_id);
+        setFormData(prev => ({ ...prev, partner_id: partner._id }));
+        setSearchQuery(partner.kyc?.company_name || partner._id);
         setShowDropdown(false);
     };
 
@@ -94,7 +94,7 @@ const GeneratePayout = () => {
 
             const newPayout = await generatePayout(payload);
             alert("Payout statement generated successfully.");
-            navigate(`/admin/payouts/${newPayout.statement_id}`);
+            navigate(`/admin/payouts/${newPayout._id || newPayout.statement_id}`);
         } catch (err) {
             setError(typeof err === 'string' ? err : 'No payable commissions found for this partner in the selected period.');
         } finally {
@@ -171,7 +171,7 @@ const GeneratePayout = () => {
                         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', marginTop: '4px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', zIndex: 10, maxHeight: '250px', overflowY: 'auto' }}>
                             {searchResults.map(p => (
                                 <div
-                                    key={p.partner_id}
+                                    key={p._id}
                                     style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px' }}
                                     onClick={() => handleSelectPartner(p)}
                                     onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-hover)'}
