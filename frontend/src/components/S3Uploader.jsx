@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileUp, CheckCircle, AlertTriangle, RefreshCw, UploadCloud } from 'lucide-react';
+import { FileUp, CheckCircle, AlertTriangle, RefreshCw, UploadCloud, Clock } from 'lucide-react';
 import api from '../api';
 
 const S3Uploader = ({ contractId, mode, documentType, onUploadSuccess }) => {

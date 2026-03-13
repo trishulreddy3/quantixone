@@ -61,6 +61,7 @@ function App() {
             <Route path="partners/:partnerId/edit" element={<EditPartner />} />
             <Route path="partners/:partnerId/contracts/:contractId" element={<ContractDetail />} />
             <Route path="contracts" element={<ContractList />} />
+            <Route path="contracts/:contractId" element={<ContractDetail />} />
             <Route path="commissions" element={<AdminCommissionList />} />
             <Route path="commissions/:commissionId" element={<AdminCommissionDetail />} />
             <Route path="payouts" element={<AdminPayoutList />} />

@@ -28,7 +28,7 @@ const AdminPayoutDetail = () => {
 
     const submitDisburse = async () => {
         setIsProcessing(true);
-        const success = await disbursePayout(statementId, { notes: disburseNotes });
+        const success = await disbursePayout(statementId, { disbursement_notes: disburseNotes, disbursed_by: 'Admin User' });
         setIsProcessing(false);
         setShowDisburseForm(false);
         if (success) {
@@ -44,7 +44,7 @@ const AdminPayoutDetail = () => {
         return <PageErrorCard message="This payout statement could not be found." backLink="/admin/payouts" backText="Back to Payouts" />;
     }
 
-    const { status, partner_id, period_start, period_end, total_commissions, total_clawbacks, net_payable, disbursed_at, disbursed_by, disbursement_notes, created_at } = activePayout;
+    const { status, partner_id, period_start, period_end, total_commissions, total_clawbacks, net_payable, disbursed_at, disbursed_by, disbursement_notes, createdAt } = activePayout;
 
     let badgeType = 'yellow';
     if (status === 'finalized') badgeType = 'blue';
@@ -100,7 +100,7 @@ const AdminPayoutDetail = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Created At</span>
-                    <span style={{ fontWeight: 500 }}>{new Date(created_at).toLocaleString()}</span>
+                    <span style={{ fontWeight: 500 }}>{new Date(createdAt).toLocaleString()}</span>
                 </div>
 
                 <div style={{ background: 'var(--bg-surface-hover)', padding: '24px', borderRadius: 'var(--radius-md)', marginTop: '24px' }}>
@@ -110,7 +110,7 @@ const AdminPayoutDetail = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>Total Clawbacks</span>
-                        <span style={{ fontWeight: 500, color: 'var(--accent-red)' }}>-₹{total_clawbacks.toLocaleString('en-IN')}</span>
+                        <span style={{ fontWeight: 500, color: 'var(--accent-red)' }}>-₹{(total_clawbacks || 0).toLocaleString('en-IN')}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '2px dashed var(--border-color)' }}>
                         <span style={{ fontWeight: 600, fontSize: '1.2rem' }}>Net Payable</span>
@@ -156,14 +156,15 @@ const AdminPayoutDetail = () => {
                                 </tr>
                             ) : (
                                 activePayoutCommissions.map(c => (
-                                    <tr key={c.commission_id}>
-                                        <td style={{ fontFamily: 'monospace' }}>{c.commission_id.substring(0, 8)}</td>
-                                        <td>{c.referred_org_id.substring(0, 8)}...</td>
-                                        <td>{c.event_type.replace('_', ' ')}</td>
-                                        <td><span className={`status-badge badge-${c.status === 'paid' ? 'green' : 'blue'}`}>{c.status.toUpperCase()}</span></td>
-                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{c.net_commission.toLocaleString('en-IN')}</td>
+                                    <tr key={c._id}>
+                                        <td style={{ fontFamily: 'monospace' }}>{(c.commission_id || c._id || '').toString().substring(0, 12)}</td>
+                                        <td>{(c.referred_org_id || '—').toString().substring(0, 10)}...</td>
+                                        <td>{(c.event_type || '').replace(/_/g, ' ')}</td>
+                                        <td><span className={`status-badge badge-${c.status === 'paid' ? 'green' : 'blue'}`}>{(c.status || '').toUpperCase()}</span></td>
+                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{(c.net_commission || 0).toLocaleString('en-IN')}</td>
                                         <td>
-                                            <Link to={`/admin/commissions/${c.commission_id}`} className="premium-btn premium-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', textDecoration: 'none' }}>
+                                            <Link to={`/admin/commissions/${c._id}`} className="premium-btn premium-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', textDecoration: 'none' }}
+                                            >
                                                 View
                                             </Link>
                                         </td>

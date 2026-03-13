@@ -51,7 +51,6 @@ const ReferralCodesList = () => {
                     <Tag size={48} color="var(--border-color)" style={{ margin: '0 auto 16px' }} />
                     <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>You haven't created any referral codes yet.</div>
                     <p style={{ marginBottom: '24px' }}>Create codes to map attribution and optionally pass discounts down to organizations you invite.</p>
-                    <button className="premium-btn mx-auto" onClick={() => navigate('/partner/referral-codes/new')}>Create First Code</button>
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '24px' }}>

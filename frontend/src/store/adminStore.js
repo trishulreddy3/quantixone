@@ -243,7 +243,10 @@ export const useAdminStore = create((set, get) => ({
             // Cache Invalidation
             const activeContract = get().activeContract;
             if (activeContract) {
-                get().fetchPartnerDetail(activeContract.partner_id);
+                const pid = typeof activeContract.partner_id === 'object'
+                    ? activeContract.partner_id?._id
+                    : activeContract.partner_id;
+                if (pid) get().fetchPartnerDetail(pid);
             }
             return true;
         } catch (err) {
@@ -297,7 +300,7 @@ export const useAdminStore = create((set, get) => ({
         set({ commissionError: null });
         try {
             const res = await api.get(`/commissions/${commissionId}`);
-            set({ activeCommission: res.data.commission });
+            set({ activeCommission: res.data.commission || res.data });
         } catch (err) {
             set({ commissionError: err.response?.data?.error || "Commission not found" });
             console.error(err);
@@ -307,7 +310,6 @@ export const useAdminStore = create((set, get) => ({
     releasePayable: async () => {
         try {
             const res = await api.post('/commissions/release-payable');
-            // Cache Invalidation
             get().fetchCommissions({ skip: 0, limit: 20 });
             return res.data.released_count;
         } catch (err) {
@@ -352,17 +354,15 @@ export const useAdminStore = create((set, get) => ({
         set({ payoutDetailLoading: true, payoutError: null });
         try {
             const res = await api.get(`/payouts/${statementId}`);
-
-            // Re-fetch commissions included via the commission_ids array for tabular display
-            const payout = res.data.payout;
+            const payout = res.data.payout || res.data;
             let includedCommissions = [];
             if (payout.commission_ids && payout.commission_ids.length > 0) {
-                // Doing this on client side if there is no bulk endpoint. (Ideally backend populates this)
                 const bulkPromises = payout.commission_ids.map(id => api.get(`/commissions/${id}`));
-                const resolved = await Promise.all(bulkPromises);
-                includedCommissions = resolved.map(r => r.data.commission);
+                const resolved = await Promise.allSettled(bulkPromises);
+                includedCommissions = resolved
+                    .filter(r => r.status === 'fulfilled')
+                    .map(r => r.value.data.commission || r.value.data);
             }
-
             set({ activePayout: payout, activePayoutCommissions: includedCommissions, payoutDetailLoading: false });
         } catch (err) {
             set({ payoutDetailLoading: false, payoutError: err.response?.data?.error || "Payout statement not found" });

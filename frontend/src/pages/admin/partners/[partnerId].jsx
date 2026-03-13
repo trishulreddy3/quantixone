@@ -120,7 +120,9 @@ const PartnerDetail = () => {
                     )}
                     {status === 'contract_sent' && (
                         <>
-                            <button className="premium-btn premium-btn-secondary" disabled>Awaiting Signature</button>
+                            {partnerContracts.length > 0 && (
+                                <button className="premium-btn premium-btn-secondary" onClick={() => navigate(`/admin/contracts/${partnerContracts[0]._id}`)} disabled={isProcessing}>View Contract</button>
+                            )}
                             <button className="premium-btn premium-btn-danger" onClick={() => setShowTerminateModal(true)} disabled={isProcessing}>Terminate</button>
                         </>
                     )}

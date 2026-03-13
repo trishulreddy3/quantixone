@@ -117,14 +117,15 @@ const AdminCommissionList = () => {
                                 </tr>
                             ) : (
                                 commissionsData?.commissions?.map(c => (
-                                    <tr key={c.commission_id}>
-                                        <td style={{ fontFamily: 'monospace' }}>{c.commission_id.substring(0, 8)}</td>
-                                        <td style={{ cursor: 'pointer', color: 'var(--accent-indigo)' }} onClick={() => navigate(`/admin/partners/${c.partner_id}`)}>
-                                            {c.partner_id.substring(0, 8)}...
+                                    <tr key={c._id}>
+                                        <td style={{ fontFamily: 'monospace' }}>{(c.commission_id || c._id || '').toString().substring(0, 12)}</td>
+                                        <td style={{ cursor: 'pointer', color: 'var(--accent-indigo)' }} onClick={() => navigate(`/admin/partners/${c.partner_id}`)}
+                                        >
+                                            {(c.partner_id || '').toString().substring(0, 8)}...
                                         </td>
-                                        <td>{c.referred_org_id.substring(0, 8)}...</td>
-                                        <td>{c.event_type.replace('_', ' ')}</td>
-                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{c.net_commission.toLocaleString('en-IN')}</td>
+                                        <td>{(c.referred_org_id || '—').substring(0, 8)}...</td>
+                                        <td>{(c.event_type || '').replace(/_/g, ' ')}</td>
+                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{(c.net_commission || 0).toLocaleString('en-IN')}</td>
                                         <td>
                                             <span className={`status-badge badge-${getBadgeType(c.status)}`}>{STATUS_LABELS[c.status] || c.status}</span>
                                         </td>
@@ -138,11 +139,12 @@ const AdminCommissionList = () => {
                                                         {hold.text}
                                                     </div>
                                                 );
-                                            })() : new Date(c.hold_until).toLocaleDateString()}
+                                            })() : (c.hold_until ? new Date(c.hold_until).toLocaleDateString() : '—')}
                                         </td>
-                                        <td>{new Date(c.created_at).toLocaleDateString()}</td>
+                                        <td>{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
                                         <td>
-                                            <button className="premium-btn premium-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => navigate(`/admin/commissions/${c.commission_id}`)}>
+                                            <button className="premium-btn premium-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => navigate(`/admin/commissions/${c._id}`)}
+                                            >
                                                 View
                                             </button>
                                         </td>

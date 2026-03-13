@@ -72,12 +72,13 @@ const ContractDetail = () => {
     }
 
     const { status, partner_id, partner_signed_at, admin_signed_at } = activeContract;
+    const partnerIdStr = typeof partner_id === 'object' ? partner_id?._id : partner_id;
 
     return (
         <div className="animate-fade-in relative">
             <div className="page-header" style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <Link to={`/admin/partners/${partner_id}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                    <Link to={`/admin/partners/${partnerIdStr}`} style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
                         <ArrowLeft size={24} />
                     </Link>
                     <h1 className="page-title" style={{ margin: 0 }}>Contract Details</h1>

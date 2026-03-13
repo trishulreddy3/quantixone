@@ -35,16 +35,18 @@ export const usePartnerStore = create((set, get) => ({
         try {
             const [payableRes, selfPartnerRes, recentCommissionsRes] = await Promise.all([
                 api.get(`/commissions?status=payable&limit=100&partner_id=${pid}`),
-                api.get(`/partners/${pid}`).catch(() => ({ data: {} })), // Fallback if no ObjectId match
+                api.get(`/partners/${pid}`).catch(() => ({ data: {} })),
                 api.get(`/commissions?limit=5&partner_id=${pid}`)
             ]);
 
             const payableTotal = (payableRes.data.commissions || []).reduce((sum, c) => sum + c.net_commission, 0);
+            // Partner API returns the partner object directly (not nested under .partner)
+            const selfPartner = selfPartnerRes.data._id ? selfPartnerRes.data : {};
 
             set({
                 dashboardData: {
                     payableCommissions: payableTotal,
-                    selfPartner: selfPartnerRes.data.partner || {},
+                    selfPartner,
                     recentCommissions: recentCommissionsRes.data.commissions || []
                 },
                 dashboardLoading: false
@@ -87,7 +89,7 @@ export const usePartnerStore = create((set, get) => ({
         set({ activeCodeLoading: true });
         try {
             const res = await api.get(`/referral-codes/${codeId}`);
-            set({ activeCode: res.data.referral_code, activeCodeLoading: false });
+            set({ activeCode: res.data.referral_code || res.data, activeCodeLoading: false });
         } catch (err) {
             set({ activeCodeLoading: false });
         }
@@ -139,8 +141,7 @@ export const usePartnerStore = create((set, get) => ({
         set({ commissionError: null });
         try {
             const res = await api.get(`/commissions/${commissionId}`);
-            // Security: We trust backend checks if this commission belongs to the calling partner
-            set({ activeCommission: res.data.commission });
+            set({ activeCommission: res.data.commission || res.data });
         } catch (err) {
             set({ commissionError: err.response?.data?.error || "This commission record could not be found." });
             console.error(err);
@@ -173,15 +174,15 @@ export const usePartnerStore = create((set, get) => ({
         set({ payoutDetailLoading: true, payoutError: null });
         try {
             const res = await api.get(`/payouts/${statementId}`);
-
-            const payout = res.data.payout;
+            const payout = res.data.payout || res.data;
             let includedCommissions = [];
             if (payout.commission_ids && payout.commission_ids.length > 0) {
                 const bulkPromises = payout.commission_ids.map(id => api.get(`/commissions/${id}`));
-                const resolved = await Promise.all(bulkPromises);
-                includedCommissions = resolved.map(r => r.data.commission);
+                const resolved = await Promise.allSettled(bulkPromises);
+                includedCommissions = resolved
+                    .filter(r => r.status === 'fulfilled')
+                    .map(r => r.value.data.commission || r.value.data);
             }
-
             set({ activePayout: payout, activePayoutCommissions: includedCommissions, payoutDetailLoading: false });
         } catch (err) {
             set({ payoutDetailLoading: false, payoutError: err.response?.data?.error || "This payout statement could not be found." });

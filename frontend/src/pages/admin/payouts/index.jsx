@@ -89,15 +89,16 @@ const AdminPayoutList = () => {
                                 </tr>
                             ) : (
                                 payoutsData?.payouts?.map(p => (
-                                    <tr key={p.statement_id}>
-                                        <td style={{ fontFamily: 'monospace' }}>{p.statement_id.substring(0, 8)}</td>
-                                        <td style={{ cursor: 'pointer', color: 'var(--accent-indigo)' }} onClick={() => navigate(`/admin/partners/${p.partner_id}`)}>
-                                            {p.partner_id.substring(0, 8)}...
+                                    <tr key={p._id || p.statement_id}>
+                                        <td style={{ fontFamily: 'monospace' }}>{(p.statement_id || '').substring(0, 12)}</td>
+                                        <td style={{ cursor: 'pointer', color: 'var(--accent-indigo)' }} onClick={() => navigate(`/admin/partners/${typeof p.partner_id === 'object' ? p.partner_id._id : p.partner_id}`)}
+                                        >
+                                            {typeof p.partner_id === 'object' ? (p.partner_id.kyc?.company_name || 'Unknown') : ((p.partner_id || '').toString().substring(0, 8) + '...')}
                                         </td>
                                         <td style={{ fontWeight: 500 }}>
                                             {new Date(p.period_start).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })} – {new Date(p.period_end).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
                                         </td>
-                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{p.net_payable.toLocaleString('en-IN')}</td>
+                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>₹{(p.net_payable || 0).toLocaleString('en-IN')}</td>
                                         <td>
                                             {(() => {
                                                 let badgeType = 'yellow';
@@ -107,9 +108,10 @@ const AdminPayoutList = () => {
                                             })()}
                                         </td>
                                         <td>{p.disbursed_at ? new Date(p.disbursed_at).toLocaleDateString() : '—'}</td>
-                                        <td>{new Date(p.created_at).toLocaleDateString()}</td>
+                                        <td>{new Date(p.createdAt).toLocaleDateString()}</td>
                                         <td>
-                                            <button className="premium-btn premium-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => navigate(`/admin/payouts/${p.statement_id}`)}>
+                                            <button className="premium-btn premium-btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => navigate(`/admin/payouts/${p._id}`)}
+                                            >
                                                 View
                                             </button>
                                         </td>
